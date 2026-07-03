@@ -1,0 +1,128 @@
+// Glass Library — Prisma schema
+// See Part 2 of the build spec. Do not rename fields; downstream code depends on these.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model University {
+  id         String       @id @default(uuid())
+  name       String       @unique
+  country    String       @default("Kenya")
+  faculties  Faculty[]
+  documents  Document[]
+}
+
+model Faculty {
+  id            String       @id @default(uuid())
+  universityId  String
+  university    University   @relation(fields: [universityId], references: [id])
+  name          String
+  departments   Department[]
+}
+
+model Department {
+  id         String     @id @default(uuid())
+  facultyId  String
+  faculty    Faculty    @relation(fields: [facultyId], references: [id])
+  name       String
+  units      Unit[]
+}
+
+model Unit {
+  id            String     @id @default(uuid())
+  departmentId  String
+  department    Department @relation(fields: [departmentId], references: [id])
+  code          String
+  title         String
+  documents     Document[]
+
+  @@unique([departmentId, code])
+}
+
+model Document {
+  id                String     @id @default(uuid())
+  title             String
+  docType           String     // past_paper | notes | textbook | thesis | assignment | other
+  unitId            String?
+  unit              Unit?      @relation(fields: [unitId], references: [id])
+  universityId      String?
+  university        University? @relation(fields: [universityId], references: [id])
+  year              Int?
+  examType          String?
+  uploaderId        String     // stub until real auth (spec Part 10 "Deferred")
+  fileKey           String
+  fileHash          String
+  fileSizeBytes     BigInt?
+  pageCount         Int?
+  aiSummary         String?
+  status            String     @default("pending") // pending | approved | flagged | rejected
+  confidenceScore   Float      @default(0)
+  downloadCount     Int        @default(0)
+  viewCount         Int        @default(0)
+  thumbnailKey      String?
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+
+  tags              DocumentTag[]
+  contributors      DocumentContributor[]
+  downloads         Download[]
+  views             View[]
+
+  @@index([fileHash])
+  @@index([unitId])
+}
+
+model Tag {
+  id        String        @id @default(uuid())
+  name      String        @unique
+  documents DocumentTag[]
+}
+
+model DocumentTag {
+  documentId String
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  tagId      String
+  tag        Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([documentId, tagId])
+}
+
+model DocumentContributor {
+  documentId    String
+  document      Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  uploaderId    String
+  contributedAt DateTime @default(now())
+
+  @@id([documentId, uploaderId])
+}
+
+model Download {
+  id           String   @id @default(uuid())
+  documentId   String
+  document     Document @relation(fields: [documentId], references: [id])
+  userRef      String?
+  downloadedAt DateTime @default(now())
+}
+
+model View {
+  id        String   @id @default(uuid())
+  documentId String
+  document  Document @relation(fields: [documentId], references: [id])
+  userRef   String?
+  viewedAt  DateTime @default(now())
+}
+
+model Collection {
+  id          String   @id @default(uuid())
+  ownerId     String
+  title       String
+  description String?
+  isPublic    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+}
